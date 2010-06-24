@@ -1,13 +1,13 @@
 require 'resque'
 require 'redisk'
-require 'uuid'
+require 'uuidtools'
 
 module Resque
   # Resque::Status is a Hash object that has helper methods for dealing with 
   # the common status attributes. It also has a number of class methods for 
   # creating/updating/retrieving status objects from Redis
   class Status < Hash
-    VERSION = '0.1.4'
+    VERSION = '0.1.4.uuidtools'
 
     extend Resque::Helpers
 
@@ -115,7 +115,7 @@ module Resque
     end
 
     def self.generate_uuid
-      UUID.generate(:compact)
+      UUID.timestamp_create.to_s.gsub("-", "")
     end
 
     def self.hash_accessor(name, options = {})
