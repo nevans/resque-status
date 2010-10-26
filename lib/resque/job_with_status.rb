@@ -87,6 +87,13 @@ module Resque
       instance.safe_perform!
       instance
     end
+    
+    # Wrapper API to forward a Resque::Job creation API call into a JobWithStatus call.
+    # This is needed to be used with resque scheduler
+    # http://github.com/bvandenbos/resque-scheduler
+    def self.scheduled(queue, klass, *args)
+      create(args)
+    end
 
     # Create a new instance with <tt>uuid</tt> and <tt>options</tt>
     def initialize(uuid, options = {})
@@ -99,15 +106,22 @@ module Resque
     # If an error occurs within the job's work, it will set the status as failed and 
     # re-raise the error.
     def safe_perform!
+      set_status({'status' => 'working'})
       perform
       completed unless status && status.completed?
+      on_success if respond_to?(:on_success)
     rescue Killed
       logger.info "Job #{self} Killed at #{Time.now}"
       Resque::Status.killed(uuid)
+      on_killed if respond_to?(:on_killed)
     rescue => e
       logger.error e
       failed("The task failed because of an error: #{e}")
-      raise e
+      if respond_to?(:on_failure)
+        on_failure(e)
+      else
+        raise e
+      end
     end
 
     # Returns a Redisk::Logger object scoped to this paticular job/uuid
